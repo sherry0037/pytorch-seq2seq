@@ -20,6 +20,16 @@ try:
 except NameError:
     raw_input = input  # Python 3
 
+TRAIN_PATH="data/toy_reverse/train/data.txt"
+DEV_PATH="data/toy_reverse/dev/data.txt"
+EXPT_PAT="./experiment"
+
+"""
+TRAIN_PATH='data/billion/xaa'
+DEV_PATH='data/billion/dev/billion2011val'
+EXPT_PAT="./experiment/billion"
+"""
+
 # Sample usage:
 #     # training
 #     python examples/sample.py --train_path $TRAIN_PATH --dev_path $DEV_PATH --expt_dir $EXPT_PATH
@@ -29,11 +39,11 @@ except NameError:
 #      python examples/sample.py --train_path $TRAIN_PATH --dev_path $DEV_PATH --expt_dir $EXPT_PATH --load_checkpoint $CHECKPOINT_DIR
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--train_path', action='store', dest='train_path', default='data/billion/xaa',
+parser.add_argument('--train_path', action='store', dest='train_path', default=TRAIN_PATH,
                     help='Path to train data')
-parser.add_argument('--dev_path', action='store', dest='dev_path', default='data/billion/dev/billion2011val',
+parser.add_argument('--dev_path', action='store', dest='dev_path', default=DEV_PATH,
                     help='Path to dev data')
-parser.add_argument('--expt_dir', action='store', dest='expt_dir', default='./experiment/billion',
+parser.add_argument('--expt_dir', action='store', dest='expt_dir', default=EXPT_PAT,
                     help='Path to experiment directory. If load_checkpoint is True, then path to checkpoint directory has to be provided')
 parser.add_argument('--load_checkpoint', action='store', dest='load_checkpoint',
                     help='The name of the checkpoint to load, usually an encoded time string')
@@ -74,8 +84,10 @@ else:
         fields=[('src', src), ('tgt', tgt)],
         filter_pred=len_filter
     )
-    src.build_vocab(train, wv_type='glove.6B', fill_from_vectors=True, max_size=100000)
-    tgt.build_vocab(train, wv_type='glove.6B', fill_from_vectors=True, max_size=100000)
+    #src.build_vocab(train, wv_type='glove.6B', fill_from_vectors=True, max_size=100000)
+    #tgt.build_vocab(train, wv_type='glove.6B', fill_from_vectors=True, max_size=100000)
+    src.build_vocab(train, max_size=100000)
+    tgt.build_vocab(train, max_size=100000)
     input_vocab = src.vocab
     output_vocab = tgt.vocab
 

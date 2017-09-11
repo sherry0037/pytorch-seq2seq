@@ -20,31 +20,6 @@ try:
 except NameError:
     raw_input = input  # Python 3
 
-# Sample usage:
-#     # training
-#     python examples/train.py --train_path $TRAIN_PATH --dev_path $DEV_PATH --expt_dir $EXPT_PATH
-#     # resuming from the latest checkpoint of the experiment
-#      python examples/train.py --train_path $TRAIN_PATH --dev_path $DEV_PATH --expt_dir $EXPT_PATH --resume
-#      # resuming from a specific checkpoint
-#      python examples/train.py --train_path $TRAIN_PATH --dev_path $DEV_PATH --expt_dir $EXPT_PATH --load_checkpoint $CHECKPOINT_DIR
-
-parser = argparse.ArgumentParser()
-parser.add_argument('--train_path', action='store', dest='train_path', default='data/billion/xaa',
-                    help='Path to train data')
-parser.add_argument('--dev_path', action='store', dest='dev_path', default='data/billion/dev/billion2011val',
-                    help='Path to dev data')
-parser.add_argument('--expt_dir', action='store', dest='expt_dir', default='./experiment/billion',
-                    help='Path to experiment directory. If load_checkpoint is True, then path to checkpoint directory has to be provided')
-parser.add_argument('--load_checkpoint', action='store', dest='load_checkpoint',
-                    help='The name of the checkpoint to load, usually an encoded time string')
-parser.add_argument('--resume', action='store_true', dest='resume',
-                    default=False,
-                    help='Indicates if training has to be resumed from the latest checkpoint')
-parser.add_argument('--log-level', dest='log_level',
-                    default='info',
-                    help='Logging level.')
-
-opt = parser.parse_args()
 
 LOG_FORMAT = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
 logging.basicConfig(format=LOG_FORMAT, level=getattr(logging, opt.log_level.upper()))
@@ -126,10 +101,67 @@ else:
             optimizer=optimizer,
             resume=opt.resume)
 
-predictor = Predictor(seq2seq, input_vocab, output_vocab)
+EMBEDDING_SIZE = 300
+LEARNING_RATE = 0.001
+HIDDEN_SIZE = 128
 
-while True:
-    seq_str = raw_input("Type in a source sequence:")
-    seq = seq_str.strip().split()
-    print(predictor.predict(seq))
+ATTENTION_MODEL = "local"
+
+def main(argv):
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="seq2seq model with attention")
+  
+    parser.add_argument('--train_path', action='store', dest='train_path', default='data/billion/xaa',
+                    help='Path to train data')
+    parser.add_argument('--dev_path', action='store', dest='dev_path', default='data/billion/dev/billion2011val',
+                    help='Path to dev data')
+    parser.add_argument('--expt_dir', action='store', dest='expt_dir', default='./experiment/billion',
+                    help='Path to experiment directory. If load_checkpoint is True, then path to checkpoint directory has to be provided')                        
+
+    # model
+    parser.add_argument("--wv_type", dest="wv_type", default="glove.6B",
+                        help="Choose pretrained embedding type. Default: glove.6B")
+    parser.add_argument("--wv_size", dest="wv_size", type=int, default=EMBEDDING_SIZE,
+                        help="Choose pretrained embedding size. Default: %d"%(EMBEDDING_SIZE))
+    parser.add_argument("--rnn_unit", dest="rnn_unit", default="LSTM",
+                        help="choose from GRU, LSTM, BILSTIM")
+    parser.add_argument("--attention_model", "--attention", dest="attention", default=ATTENTION_MODEL,
+                        help="attention model to use")
+    parser.add_argument("--learning_rate", dest="learning_rate", type=float, default=LEARNING_RATE,
+                        help="Learning rate. Default: %d"%(LEARNING_RATE))
+    parser.add_argument("--hidden_size", dest="hidden_size", type=int, default=HIDDEN_SIZE,
+                        help="number of hidden units")
+    parser.add_argument("--encoder_layer", dest="enc_layer", type=int, default=N_LAYERS,
+                        help="number of hidden layers of encoder")
+    parser.add_argument("--decoder_layer", dest="dec_layer", type=int, default=N_LAYERS,
+                        help="number of hidden layer of decoder")
+    parser.add_argument("--dropout", dest="dropout", type=float, default=DROPOUT_RATE)
+    parser.add_argument("--max_length", dest="max_length", type=int, default=30)
+    parser.add_argument("--teacher", dest="teacher", type=float, default=TEACHER_FORCING_RATIO)
+
+    # training
+    parser.add_argument("--batch_size", dest="batch_size", type=int, default=BATCH_SIZE)
+    parser.add_argument("--n_epochs", dest="n_epochs", type=int, default=1)
+    parser.add_argument("--print_every", dest="print_every", type=int, default=100)
+    parser.add_argument("--save_checkpoint", "--save", dest="save",
+                        default="", help="path to save checkpoint (default: None)")
+    parser.add_argument("--resume_checkpoint", "--resume", dest="resume",
+                        default="", help="resume from checkpoint path (default: None)")
+    parser.add_argument("--evaluate_checkpoint", "--evaluate", dest="evaluate",
+                        default='checkpoints/checkpoint.pth.tar',
+                        help="evaluate checkpoint at path")
+                        
+                        
+    parser.add_argument('--load_checkpoint', action='store', dest='load_checkpoint',
+                        help='The name of the checkpoint to load, usually an encoded time string')
+    parser.add_argument('--resume', action='store_true', dest='resume',
+                        default=False,
+                        help='Indicates if training has to be resumed from the latest checkpoint')
+    parser.add_argument('--log-level', dest='log_level',
+                        default='info',
+                        help='Logging level.')
+
+    main(parser.parse_args())
 
