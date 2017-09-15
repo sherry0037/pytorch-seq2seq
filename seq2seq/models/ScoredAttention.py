@@ -64,7 +64,9 @@ class ScoredAttention(Attention):
         return output, attn
 
     def score(self, output, context):
-        if self.method == 'general':
+        if self.method == 'general': 
+	    print output
+	    print context
             energy = torch.bmm(output, context.transpose(1, 2))
             return energy
         else:

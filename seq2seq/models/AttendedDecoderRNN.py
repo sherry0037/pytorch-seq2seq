@@ -160,7 +160,9 @@ class AttendedDecoderRNN(BaseRNN):
             return local_hidden_states
 
         fill_contexts = Variable(torch.zeros(encoder_outputs.size()))
-        
+        if torch.cuda.is_available():
+	    fill_contexts.cuda()
+ 
         for di in range(self.max_length):
             local_contexts = get_local_contexts(di, encoder_outputs) if di <= encoder_outputs.size(1) else fill_contexts
             decoder_output, decoder_hidden, step_attn = self.forward_step(decoder_input, decoder_hidden, local_contexts,
