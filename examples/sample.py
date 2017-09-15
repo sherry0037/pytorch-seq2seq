@@ -29,6 +29,11 @@ TRAIN_PATH='data/billion/xaa'
 DEV_PATH='data/billion/dev/billion2011val'
 EXPT_PAT="./experiment/billion"
 """
+TRAIN_PATH="data/nucle/train/train.txt"
+DEV_PATH="data/nucle/dev/validation.txt"
+EXPT_PAT="./experiment/nucle"
+
+
 
 # Sample usage:
 #     # training
@@ -71,7 +76,7 @@ else:
     # Prepare dataset
     src = SourceField()
     tgt = TargetField()
-    max_len = 5
+    max_len = 50
     def len_filter(example):
         return len(example.src) <= max_len and len(example.tgt) <= max_len
     train = torchtext.data.TabularDataset(
@@ -84,10 +89,10 @@ else:
         fields=[('src', src), ('tgt', tgt)],
         filter_pred=len_filter
     )
-    #src.build_vocab(train, wv_type='glove.6B', fill_from_vectors=True, max_size=100000)
-    #tgt.build_vocab(train, wv_type='glove.6B', fill_from_vectors=True, max_size=100000)
-    src.build_vocab(train, max_size=100000)
-    tgt.build_vocab(train, max_size=100000)
+    src.build_vocab(train, wv_type='glove.6B', fill_from_vectors=True, max_size=100000)
+    tgt.build_vocab(train, wv_type='glove.6B', fill_from_vectors=True, max_size=100000)
+    #src.build_vocab(train, max_size=100000)
+    #tgt.build_vocab(train, max_size=100000)
     input_vocab = src.vocab
     output_vocab = tgt.vocab
 
@@ -134,7 +139,7 @@ else:
                           print_every=10, expt_dir=opt.expt_dir)
 
     seq2seq = t.train(seq2seq, train,
-            num_epochs=1, dev_data=dev,
+            num_epochs=5, dev_data=dev,
             optimizer=optimizer,
             resume=opt.resume)
 
