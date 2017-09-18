@@ -3,8 +3,9 @@ import argparse
 import logging
 
 import torch
-from torch.optim.lr_scheduler import StepLR
 import torchtext
+import ConfigParser
+from torch.optim.lr_scheduler import StepLR
 
 import seq2seq
 from seq2seq.trainer import SupervisedTrainer
@@ -21,147 +22,97 @@ except NameError:
     raw_input = input  # Python 3
 
 
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--model', action='store', dest='model', default="1",
+                    help='Name of the model')
+parser.add_argument('--n_epoch', action='store', dest='n_epoch', default=30,
+                    help='Number of epoch to train. Default: 30')
+parser.add_argument('--resume', action='store_true', dest='resume',
+                    default=False,
+                    help='Indicates if training has to be resumed from the latest checkpoint')
+parser.add_argument('--log-level', dest='log_level',
+                    default='info',
+                    help='Logging level.')
+args = parser.parse_args()
+
 LOG_FORMAT = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
-logging.basicConfig(format=LOG_FORMAT, level=getattr(logging, opt.log_level.upper()))
-logging.info(opt)
+logging.basicConfig(format=LOG_FORMAT, level=getattr(logging, args.log_level.upper()))
+logging.info(args)
 
-if opt.load_checkpoint is not None:
-    logging.info("loading checkpoint from {}".format(os.path.join(opt.expt_dir, Checkpoint.CHECKPOINT_DIR_NAME, opt.load_checkpoint)))
-    checkpoint_path = os.path.join(opt.expt_dir, Checkpoint.CHECKPOINT_DIR_NAME, opt.load_checkpoint)
-    checkpoint = Checkpoint.load(checkpoint_path)
-    seq2seq = checkpoint.model
-    input_vocab = checkpoint.input_vocab
-    output_vocab = checkpoint.output_vocab
-else:
-    # Prepare dataset
-    src = SourceField()
-    tgt = TargetField()
-    max_len = 5
-    def len_filter(example):
-        return len(example.src) <= max_len and len(example.tgt) <= max_len
-    train = torchtext.data.TabularDataset(
-        path=opt.train_path, format='tsv',
-        fields=[('src', src), ('tgt', tgt)],
-        filter_pred=len_filter
-    )
-    dev = torchtext.data.TabularDataset(
-        path=opt.dev_path, format='tsv',
-        fields=[('src', src), ('tgt', tgt)],
-        filter_pred=len_filter
-    )
-    src.build_vocab(train, wv_type='glove.6B', fill_from_vectors=True, max_size=100000)
-    tgt.build_vocab(train, wv_type='glove.6B', fill_from_vectors=True, max_size=100000)
-    input_vocab = src.vocab
-    output_vocab = tgt.vocab
+config = ConfigParser.ConfigParser()
+config.read("examples/config.ini")
+TRAIN_PATH = config.get(args.model, "train")
+DEV_PATH = config.get(args.model, "dev")
+EXPT_PATH = config.get(args.model, "expt")
+VOCAB_SIZE = int(config.get(args.model, "vocab_size"))
+HIDDEN_SIZE = int(config.get(args.model, "hidden_size"))
+ATTENTION = config.get(args.model, "attention")
+BATCH_SIZE = int(config.get(args.model, "batch_size"))
+TEACHER_FORCING_RATE = float(config.get(args.model, "teacher_forcing_rate"))
+LEARNING_RATE = float(config.get(args.model, "learning_rate"))
 
-    # NOTE: If the source field name and the target field name
-    # are different from 'src' and 'tgt' respectively, they have
-    # to be set explicitly before any training or inference
-    # seq2seq.src_field_name = 'src'
-    # seq2seq.tgt_field_name = 'tgt'
 
-    # Prepare loss
-    weight = torch.ones(len(tgt.vocab))
-    pad = tgt.vocab.stoi[tgt.pad_token]
-    loss = Perplexity(weight, pad)
+
+# Prepare dataset
+src = SourceField()
+tgt = TargetField()
+max_len = 50
+
+def len_filter(example):
+    return len(example.src) <= max_len and len(example.tgt) <= max_len
+
+train = torchtext.data.TabularDataset(
+    path=TRAIN_PATH, format='tsv',
+    fields=[('src', src), ('tgt', tgt)],
+    filter_pred=len_filter
+)
+dev = torchtext.data.TabularDataset(
+    path=DEV_PATH, format='tsv',
+    fields=[('src', src), ('tgt', tgt)],
+    filter_pred=len_filter
+)
+#src.build_vocab(train, wv_type='glove.6B', fill_from_vectors=True, max_size=VOCAB_SIZE)
+#tgt.build_vocab(train, wv_type='glove.6B', fill_from_vectors=True, max_size=VOCAB_SIZE)
+src.build_vocab(train, max_size=VOCAB_SIZE)
+tgt.build_vocab(train, max_size=VOCAB_SIZE)
+input_vocab = src.vocab
+output_vocab = tgt.vocab
+
+
+# Prepare loss
+weight = torch.ones(len(tgt.vocab))
+pad = tgt.vocab.stoi[tgt.pad_token]
+loss = Perplexity(weight, pad)
+if torch.cuda.is_available():
+    loss.cuda()
+
+seq2seq = None
+optimizer = None
+
+if not args.resume:
+    # Initialize model
+    hidden_size=HIDDEN_SIZE
+    encoder = EncoderRNN(len(src.vocab), max_len, hidden_size,
+                         variable_lengths=True)
+    decoder = DecoderRNN(len(tgt.vocab), max_len, hidden_size,
+                         dropout_p=0.2, use_attention=True,
+                         eos_id=tgt.eos_id, sos_id=tgt.sos_id)
+    seq2seq = Seq2seq(encoder, decoder)
     if torch.cuda.is_available():
-        loss.cuda()
+        seq2seq.cuda()
 
-    seq2seq = None
-    optimizer = None
-    if not opt.resume:
-        # Initialize model
-        hidden_size=128
-        encoder = EncoderRNN(len(src.vocab), max_len, hidden_size,
-                             variable_lengths=True)
-        decoder = DecoderRNN(len(tgt.vocab), max_len, hidden_size,
-                             dropout_p=0.2, use_attention=True,
-                             eos_id=tgt.eos_id, sos_id=tgt.sos_id)
-        seq2seq = Seq2seq(encoder, decoder)
-        if torch.cuda.is_available():
-            seq2seq.cuda()
+    for param in seq2seq.parameters():
+        param.data.uniform_(-0.08, 0.08)
 
-        for param in seq2seq.parameters():
-            param.data.uniform_(-0.08, 0.08)
+optimizer = Optimizer(torch.optim.Adam(seq2seq.parameters(), lr = LEARNING_RATE), max_grad_norm=5)
+# train
+t = SupervisedTrainer(loss=loss, batch_size=BATCH_SIZE,
+                      checkpoint_every=1000,
+                      print_every=1, expt_dir=EXPT_PATH)
 
-        # Optimizer and learning rate scheduler can be customized by
-        # explicitly constructing the objects and pass to the trainer.
-        #
-        # optimizer = Optimizer(torch.optim.Adam(seq2seq.parameters()), max_grad_norm=5)
-        # scheduler = StepLR(optimizer.optimizer, 1)
-        # optimizer.set_scheduler(scheduler)
-
-    # train
-    t = SupervisedTrainer(loss=loss, batch_size=32,
-                          checkpoint_every=500,
-                          print_every=10, expt_dir=opt.expt_dir)
-
-    seq2seq = t.train(seq2seq, train,
-            num_epochs=5, dev_data=dev,
-            optimizer=optimizer,
-            resume=opt.resume)
-
-EMBEDDING_SIZE = 300
-LEARNING_RATE = 0.001
-HIDDEN_SIZE = 128
-
-ATTENTION_MODEL = "local"
-
-def main(argv):
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="seq2seq model with attention")
-  
-    parser.add_argument('--train_path', action='store', dest='train_path', default='data/billion/xaa',
-                    help='Path to train data')
-    parser.add_argument('--dev_path', action='store', dest='dev_path', default='data/billion/dev/billion2011val',
-                    help='Path to dev data')
-    parser.add_argument('--expt_dir', action='store', dest='expt_dir', default='./experiment/billion',
-                    help='Path to experiment directory. If load_checkpoint is True, then path to checkpoint directory has to be provided')                        
-
-    # model
-    parser.add_argument("--wv_type", dest="wv_type", default="glove.6B",
-                        help="Choose pretrained embedding type. Default: glove.6B")
-    parser.add_argument("--wv_size", dest="wv_size", type=int, default=EMBEDDING_SIZE,
-                        help="Choose pretrained embedding size. Default: %d"%(EMBEDDING_SIZE))
-    parser.add_argument("--rnn_unit", dest="rnn_unit", default="LSTM",
-                        help="choose from GRU, LSTM, BILSTIM")
-    parser.add_argument("--attention_model", "--attention", dest="attention", default=ATTENTION_MODEL,
-                        help="attention model to use")
-    parser.add_argument("--learning_rate", dest="learning_rate", type=float, default=LEARNING_RATE,
-                        help="Learning rate. Default: %d"%(LEARNING_RATE))
-    parser.add_argument("--hidden_size", dest="hidden_size", type=int, default=HIDDEN_SIZE,
-                        help="number of hidden units")
-    parser.add_argument("--encoder_layer", dest="enc_layer", type=int, default=N_LAYERS,
-                        help="number of hidden layers of encoder")
-    parser.add_argument("--decoder_layer", dest="dec_layer", type=int, default=N_LAYERS,
-                        help="number of hidden layer of decoder")
-    parser.add_argument("--dropout", dest="dropout", type=float, default=DROPOUT_RATE)
-    parser.add_argument("--max_length", dest="max_length", type=int, default=30)
-    parser.add_argument("--teacher", dest="teacher", type=float, default=TEACHER_FORCING_RATIO)
-
-    # training
-    parser.add_argument("--batch_size", dest="batch_size", type=int, default=BATCH_SIZE)
-    parser.add_argument("--n_epochs", dest="n_epochs", type=int, default=1)
-    parser.add_argument("--print_every", dest="print_every", type=int, default=100)
-    parser.add_argument("--save_checkpoint", "--save", dest="save",
-                        default="", help="path to save checkpoint (default: None)")
-    parser.add_argument("--resume_checkpoint", "--resume", dest="resume",
-                        default="", help="resume from checkpoint path (default: None)")
-    parser.add_argument("--evaluate_checkpoint", "--evaluate", dest="evaluate",
-                        default='checkpoints/checkpoint.pth.tar',
-                        help="evaluate checkpoint at path")
-                        
-                        
-    parser.add_argument('--load_checkpoint', action='store', dest='load_checkpoint',
-                        help='The name of the checkpoint to load, usually an encoded time string')
-    parser.add_argument('--resume', action='store_true', dest='resume',
-                        default=False,
-                        help='Indicates if training has to be resumed from the latest checkpoint')
-    parser.add_argument('--log-level', dest='log_level',
-                        default='info',
-                        help='Logging level.')
-
-    main(parser.parse_args())
+seq2seq = t.train(seq2seq, train,
+        num_epochs=args.n_epoch, dev_data=dev,
+        optimizer=optimizer,
+        resume=args.resume, teacher_forcing_ratio=TEACHER_FORCING_RATE)
 

@@ -22,16 +22,16 @@ except NameError:
 
 TRAIN_PATH="data/toy_reverse/train/data.txt"
 DEV_PATH="data/toy_reverse/dev/data.txt"
-EXPT_PAT="./experiment"
+EXPT_PATH="./experiment"
 
 """
 TRAIN_PATH='data/billion/xaa'
 DEV_PATH='data/billion/dev/billion2011val'
 EXPT_PAT="./experiment/billion"
 """
-TRAIN_PATH="data/nucle/train/train.txt"
-DEV_PATH="data/nucle/dev/validation.txt"
-EXPT_PAT="./experiment/nucle"
+#TRAIN_PATH="data/nucle/train/train.txt"
+#DEV_PATH="data/nucle/dev/validation.txt"
+#EXPT_PATH="./experiment/nucle"
 
 
 
@@ -48,7 +48,7 @@ parser.add_argument('--train_path', action='store', dest='train_path', default=T
                     help='Path to train data')
 parser.add_argument('--dev_path', action='store', dest='dev_path', default=DEV_PATH,
                     help='Path to dev data')
-parser.add_argument('--expt_dir', action='store', dest='expt_dir', default=EXPT_PAT,
+parser.add_argument('--expt_dir', action='store', dest='expt_dir', default=EXPT_PATH,
                     help='Path to experiment directory. If load_checkpoint is True, then path to checkpoint directory has to be provided')
 parser.add_argument('--load_checkpoint', action='store', dest='load_checkpoint',
                     help='The name of the checkpoint to load, usually an encoded time string')
@@ -89,10 +89,10 @@ else:
         fields=[('src', src), ('tgt', tgt)],
         filter_pred=len_filter
     )
-    src.build_vocab(train, wv_type='glove.6B', fill_from_vectors=True, max_size=100000)
-    tgt.build_vocab(train, wv_type='glove.6B', fill_from_vectors=True, max_size=100000)
-    #src.build_vocab(train, max_size=100000)
-    #tgt.build_vocab(train, max_size=100000)
+    #src.build_vocab(train, wv_type='glove.6B', fill_from_vectors=True, max_size=100000)
+    #tgt.build_vocab(train, wv_type='glove.6B', fill_from_vectors=True, max_size=100000)
+    src.build_vocab(train, max_size=100000)
+    tgt.build_vocab(train, max_size=100000)
     input_vocab = src.vocab
     output_vocab = tgt.vocab
 
