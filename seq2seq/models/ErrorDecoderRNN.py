@@ -16,7 +16,7 @@ else:
     import torch as device
 
 
-class AttendedDecoderRNN(BaseRNN):
+class ErrorDecoderRNN(BaseRNN):
     r"""
     Provides functionality for decoding in a seq2seq framework, with an option for attention.
 
@@ -67,14 +67,16 @@ class AttendedDecoderRNN(BaseRNN):
     def __init__(self, vocab_size, max_len, hidden_size,
             sos_id, eos_id,
             n_layers=1, rnn_cell='gru',
-            input_dropout_p=0, dropout_p=0, attention_method="general"):
-        super(AttendedDecoderRNN, self).__init__(vocab_size, max_len, hidden_size,
+            input_dropout_p=0, dropout_p=0, use_attention=True,
+            attention_method="general"):
+        super(ErrorDecoderRNN, self).__init__(vocab_size, max_len, hidden_size,
                 input_dropout_p, dropout_p,
                 n_layers, rnn_cell)
 
         self.output_size = vocab_size
         self.max_length = max_len
-        self.attention_method= attention_method
+        self.use_attention = use_attention
+        self.attention_method = attention_method
         self.eos_id = eos_id
         self.sos_id = sos_id
 
@@ -85,6 +87,7 @@ class AttendedDecoderRNN(BaseRNN):
             self.attention = ScoredAttention(self.hidden_size, self.attention_method)
 
         self.out = nn.Linear(self.hidden_size, self.output_size)
+
 
     def forward_step(self, input_var, hidden, encoder_outputs, function):
         batch_size = input_var.size(0)
@@ -102,12 +105,12 @@ class AttendedDecoderRNN(BaseRNN):
         return predicted_softmax, hidden, attn
 
     def forward(self, inputs=None, encoder_hidden=None, function=F.log_softmax,
-                    encoder_outputs=None, teacher_forcing_ratio=0):
+                    encoder_outputs=None, teacher_forcing_ratio=0, error_index=None, src_id_seq=None):
         ret_dict = dict()
         if self.attention_method:
             if encoder_outputs is None:
                 raise ValueError("Argument encoder_outputs cannot be None when attention is used.")
-            ret_dict[AttendedDecoderRNN.KEY_ATTN_SCORE] = list()
+            ret_dict[ErrorDecoderRNN.KEY_ATTN_SCORE] = list()
         if inputs is None:
             if teacher_forcing_ratio > 0:
                 raise ValueError("Teacher forcing has to be disabled (set 0) when no inputs is provided.")
@@ -139,7 +142,7 @@ class AttendedDecoderRNN(BaseRNN):
         def decode(step, step_output, step_attn):
             decoder_outputs.append(step_output)
             if self.attention_method:
-                ret_dict[AttendedDecoderRNN.KEY_ATTN_SCORE].append(step_attn)
+                ret_dict[ErrorDecoderRNN.KEY_ATTN_SCORE].append(step_attn)
             symbols = decoder_outputs[-1].topk(1)[1]
             sequence_symbols.append(symbols)
 
@@ -150,31 +153,28 @@ class AttendedDecoderRNN(BaseRNN):
                 lengths[update_idx] = len(sequence_symbols)
             return symbols
 
-        def get_local_contexts(position, encoder_outputs, window=2): 
-            indices = np.arange(position-window, position+window+1)
-            indices = indices[(indices >= 0) & (indices < encoder_outputs.size(1))]
-            indices = torch.from_numpy(indices)
-            if torch.cuda.is_available():
-                indices = indices.cuda()
-            local_hidden_states = torch.index_select(encoder_outputs, 1, Variable(indices))
-            return local_hidden_states
-
-        fill_contexts = Variable(torch.zeros(encoder_outputs.size()))
-        
         for di in range(self.max_length):
-            local_contexts = get_local_contexts(di, encoder_outputs) if di <= encoder_outputs.size(1) else fill_contexts
-            decoder_output, decoder_hidden, step_attn = self.forward_step(decoder_input, decoder_hidden, local_contexts,
+            decoder_output, decoder_hidden, step_attn = self.forward_step(decoder_input, decoder_hidden, encoder_outputs,
                                                                      function=function)
             step_output = decoder_output.squeeze(1)
             symbols = decode(di, step_output, step_attn)
+          
             if use_teacher_forcing:
                 if di>=inputs.size(1):
                     break
                 else:
                     symbols = inputs[:, di]
-            decoder_input = symbols
+            
+            if error_index:
+                if not di in error_index:
+                    if di>=src_id_seq.size(1):
+                        break
+                    symbols = src_id_seq[:, di].view(1,1)
+                    sequence_symbols[-1] = symbols
 
-        ret_dict[AttendedDecoderRNN.KEY_SEQUENCE] = sequence_symbols
-        ret_dict[AttendedDecoderRNN.KEY_LENGTH] = lengths.tolist()
+            decoder_input = symbols   
+
+        ret_dict[ErrorDecoderRNN.KEY_SEQUENCE] = sequence_symbols
+        ret_dict[ErrorDecoderRNN.KEY_LENGTH] = lengths.tolist()
 
         return decoder_outputs, decoder_hidden, ret_dict
