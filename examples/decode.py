@@ -7,6 +7,7 @@ from torch.optim.lr_scheduler import StepLR
 import torchtext
 import json
 import codecs
+import ConfigParser
 
 import seq2seq
 from seq2seq.trainer import SupervisedTrainer
@@ -16,6 +17,7 @@ from seq2seq.optim import Optimizer
 from seq2seq.dataset import SourceField, TargetField
 from seq2seq.evaluator import Predictor
 from seq2seq.util.checkpoint import Checkpoint
+from seq2seq.util.m2scorer import M2Scorer
  
 try:
     raw_input          # Python 2
@@ -26,65 +28,86 @@ except NameError:
 #      # resuming from a specific checkpoint
 #      CHECKPOINT_DIR=2017_09_07_14_45_10 
 #      python examples/decode.py --load_checkpoint $CHECKPOINT_DIR
-CHECKPOINT_DIR="2017_09_15_08_35_17" 
-DEV_PATH="data/nucle/dev/nucle_validation_json.json"
-EXPT_PATH="./experiment/nucle"
-OUT_PATH=EXPT_PATH+"/outputs"
+CHECKPOINT_DIR="2017_09_19_15_47_23" 
+
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dev_path', action='store', dest='dev_path', default=DEV_PATH,
-                    help='Path to dev data')
-parser.add_argument('--expt_dir', action='store', dest='expt_dir', default=EXPT_PATH,
-                    help='Path to experiment directory. If load_checkpoint is True, then path to checkpoint directory has to be provided')
-parser.add_argument('--out_dir', action='store', dest='out_dir', default=OUT_PATH,
-                    help='Path to store predictions')
+parser.add_argument('--config', action='store', dest='config_path', default="test.ini",
+                    help='Path to the configuration file')
+parser.add_argument('--model', action='store', dest='model', default="0",
+                    help='Name of the model')
+parser.add_argument('--out_file', action='store', dest='out_file', default="outputs",
+                    help='Where to store the results')
 parser.add_argument('--load_checkpoint', action='store', dest='load_checkpoint', default=CHECKPOINT_DIR,
                     help='The name of the checkpoint to load, usually an encoded time string')
-parser.add_argument('--resume', action='store_true', dest='resume',
-                    default=False,
-                    help='Indicates if training has to be resumed from the latest checkpoint')
+parser.add_argument('--errors_given', '-e', action='store_true', dest='errors_given', default=False,
+                    help='Use known indices for errors to make prediction.')
 parser.add_argument('--log-level', dest='log_level',
                     default='info',
                     help='Logging level.')
 
 
-opt = parser.parse_args()
+args = parser.parse_args()
 
 LOG_FORMAT = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
-logging.basicConfig(format=LOG_FORMAT, level=getattr(logging, opt.log_level.upper()))
-logging.info(opt)
+logging.basicConfig(format=LOG_FORMAT, level=getattr(logging, args.log_level.upper()))
+logging.info(args)
 
-if not os.path.exists(opt.out_dir):
-    os.makedirs(opt.out_dir)
 
-logging.info("loading checkpoint from {}".format(os.path.join(opt.expt_dir, Checkpoint.CHECKPOINT_DIR_NAME, opt.load_checkpoint)))
-checkpoint_path = os.path.join(opt.expt_dir, Checkpoint.CHECKPOINT_DIR_NAME, opt.load_checkpoint)
+
+config = ConfigParser.ConfigParser()
+config.read("examples/%s"%args.config_path)
+print config.items(args.model)
+TRAIN_PATH = config.get(args.model, "train")
+DEV_PATH = config.get(args.model, "dev")[:-3]+"json"
+EXPT_PATH = config.get(args.model, "expt")
+OUT_PATH=EXPT_PATH + "/" + args.out_file
+MAX_LEN = int(config.get(args.model, "max_len"))
+
+logging.info("loading checkpoint from {}".format(os.path.join(EXPT_PATH, Checkpoint.CHECKPOINT_DIR_NAME, args.load_checkpoint)))
+checkpoint_path = os.path.join(EXPT_PATH, Checkpoint.CHECKPOINT_DIR_NAME, args.load_checkpoint)
 checkpoint = Checkpoint.load(checkpoint_path)
 seq2seq = checkpoint.model
 input_vocab = checkpoint.input_vocab
 output_vocab = checkpoint.output_vocab
 
+if not os.path.exists(OUT_PATH):
+    os.makedirs(OUT_PATH)
+
+
 predictor = Predictor(seq2seq, input_vocab, output_vocab)
+
+def len_filter(source, target):
+    return len(source) <= MAX_LEN and len(target) <= MAX_LEN
 
 source_sentences = []
 target_sentences = []
 output_sentences = []
-with open(opt.dev_path, 'r') as f:
+with open(DEV_PATH, 'r') as f:
     sentences = json.load(f)["data"]
-    for s in sentences:
+    for s in sentences:       
+        if not len_filter(s["input_sentence"], s["corrected_sentence"]):
+            continue
         source_sentences.append(" ".join(s["input_sentence"]))
         target_sentences.append(" ".join(s["corrected_sentence"]))
-        output_sentences.append(" ".join(predictor.predict(s["input_sentence"])))
+        if args.errors_given:
+            err = []
+            for m in s["mistakes"]:
+                err += m["position"]
+            try:
+                output_sentences.append(" ".join(predictor.predict(s["input_sentence"], err)))
+            except IndexError as e:
+                print s["input_sentence"]
+                output_sentences.append(" ")
+            
+        else:
+            output_sentences.append(" ".join(predictor.predict(s["input_sentence"])))
 
-for i in xrange(len(source_sentences)):
-    print ("source = " + source_sentences[i] + "\n")
-    print ("target = " + target_sentences[i]+ "\n")
-    print ("output = " + output_sentences[i] + "\n\n")
+assert len(source_sentences) == len(target_sentences) == len(output_sentences)
 
-"""
-with codecs.open(opt.out_dir+"/"+opt.load_checkpoint+".txt", 'w', encoding='utf8') as f:
+with codecs.open(OUT_PATH+"/"+args.load_checkpoint+".txt", 'w', encoding='utf8') as f:
     for i in xrange(len(source_sentences)):
         f.write("source = " + source_sentences[i] + "\n")
         f.write("target = " + target_sentences[i]+ "\n")
-        f.write("output = " + output_sentences[i] + "\n\n")"""
-print ("Finish writing.")
+        f.write("output = " + output_sentences[i] + "\n\n")
+print ("Finish decoding. Results saved at %s"%(OUT_PATH+"/"+args.load_checkpoint+".txt"))
