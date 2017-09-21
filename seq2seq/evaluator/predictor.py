@@ -62,7 +62,7 @@ class Predictor(object):
         tgt_seq = []
         for i in range(len(tgt_id_seq)):
             v = self.src_vocab
-            if i in error_index:
+            if error_index and i in error_index:
                 v = self.tgt_vocab
             tgt_seq.append(v.itos[tgt_id_seq[i]])
         return tgt_seq
