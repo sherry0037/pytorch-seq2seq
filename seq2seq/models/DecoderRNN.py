@@ -102,7 +102,7 @@ class DecoderRNN(BaseRNN):
         return predicted_softmax, hidden, attn
 
     def forward(self, inputs=None, encoder_hidden=None, function=F.log_softmax,
-                    encoder_outputs=None, teacher_forcing_ratio=0):
+                    encoder_outputs=None, teacher_forcing_ratio=0, error_index=None, src_id_seq=None):
         ret_dict = dict()
         if self.use_attention:
             if encoder_outputs is None:
@@ -149,6 +149,32 @@ class DecoderRNN(BaseRNN):
                 update_idx = ((lengths > di) & eos_batches) != 0
                 lengths[update_idx] = len(sequence_symbols)
             return symbols
+
+        if error_index:
+            for di in range(self.max_length):
+                decoder_output, decoder_hidden, step_attn = self.forward_step(decoder_input, decoder_hidden, encoder_outputs, function=function)
+                step_output = decoder_output.squeeze(1)
+                symbols = decode(di, step_output, step_attn)
+              
+                if use_teacher_forcing:
+                    if di>=inputs.size(1):
+                        break
+                    else:
+                        symbols = inputs[:, di]
+                
+                if error_index:
+                    if not di in error_index:
+                        if di>=src_id_seq.size(1):
+                            break
+                        symbols = src_id_seq[:, di].view(1,1)
+                        sequence_symbols[-1] = symbols
+
+                decoder_input = symbols   
+
+            ret_dict[DecoderRNN.KEY_SEQUENCE] = sequence_symbols
+            ret_dict[DecoderRNN.KEY_LENGTH] = lengths.tolist()
+
+            return decoder_outputs, decoder_hidden, ret_dict
 
         # Manual unrolling is used to support random teacher forcing.
         # If teacher_forcing_ratio is True or False instead of a probability, the unrolling can be done in graph
