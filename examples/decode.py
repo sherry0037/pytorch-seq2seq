@@ -32,7 +32,7 @@ CHECKPOINT_DIR="2017_09_19_15_46_02"
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--config', action='store', dest='config_path', default="test.ini",
+parser.add_argument('--config', action='store', dest='config_path', default="config.ini",
                     help='Path to the configuration file')
 parser.add_argument('--model', action='store', dest='model', default="0",
                     help='Name of the model')
@@ -108,7 +108,10 @@ def decode(checkpoint_name, out_path=OUT_PATH, expt_path=EXPT_PATH):
                 output_sentences.append(" ".join(predictor.predict(s["input_sentence"])))
 
     assert len(source_sentences) == len(target_sentences) == len(output_sentences)
-
+    if args.errors_given:
+	out_path += "/errors"
+        if not os.path.exists(out_path):
+            os.makedirs(out_path)
     with codecs.open(out_path+"/"+checkpoint_name+".txt", 'w', encoding='utf8') as f:
         for i in xrange(len(source_sentences)):
             f.write("source = " + source_sentences[i] + "\n")

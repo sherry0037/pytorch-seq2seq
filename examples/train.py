@@ -31,7 +31,7 @@ parser.add_argument('--model', action='store', dest='model', default="0",
                     help='Name of the model')
 parser.add_argument('--decoder', action='store', dest='decoder_type', default="simple",
                     help='Choose decoder type from: simple, error, attended')
-parser.add_argument('--n_epoch', action='store', dest='n_epoch', default=30,
+parser.add_argument('--n_epoch', action='store', type=int, dest='n_epoch', default=30,
                     help='Number of epoch to train. Default: 30')
 parser.add_argument('--resume', action='store_true', dest='resume',
                     default=False,
@@ -101,12 +101,7 @@ if not args.resume:
     hidden_size=HIDDEN_SIZE
     encoder = EncoderRNN(len(src.vocab), MAX_LEN, hidden_size,
                          variable_lengths=True)
-    if args.decoder_type == "error":
-    	decoder = ErrorDecoderRNN(len(tgt.vocab), MAX_LEN, hidden_size,
-                         dropout_p=0.2, use_attention=True,
-                         eos_id=tgt.eos_id, sos_id=tgt.sos_id)
-    else:
-    	decoder = DecoderRNN(len(tgt.vocab), MAX_LEN, hidden_size,
+    decoder = DecoderRNN(len(tgt.vocab), MAX_LEN, hidden_size,
                          dropout_p=0.2, use_attention=True,
                          eos_id=tgt.eos_id, sos_id=tgt.sos_id)
     seq2seq = Seq2seq(encoder, decoder)
@@ -116,11 +111,11 @@ if not args.resume:
     for param in seq2seq.parameters():
         param.data.uniform_(-0.08, 0.08)
 
-optimizer = Optimizer(torch.optim.Adam(seq2seq.parameters(), lr = LEARNING_RATE), max_grad_norm=5)
+	optimizer = Optimizer(torch.optim.Adam(seq2seq.parameters(), lr = LEARNING_RATE), max_grad_norm=5)
 # train
 t = SupervisedTrainer(loss=loss, batch_size=BATCH_SIZE,
-                      checkpoint_every=10,
-                      print_every=10, expt_dir=EXPT_PATH)
+                      checkpoint_every=3000,
+                      print_every=50, expt_dir=EXPT_PATH)
 
 seq2seq = t.train(seq2seq, train,
         num_epochs=args.n_epoch, dev_data=dev,
