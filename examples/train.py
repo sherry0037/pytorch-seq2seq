@@ -1,3 +1,7 @@
+import sys
+sys.path.append('../')
+sys.path.append('../seq2seq/')
+
 import os
 import argparse
 import logging
@@ -25,7 +29,7 @@ except NameError:
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--config', action='store', dest='config_path', default="config.ini",
+parser.add_argument('--config', action='store', dest='config_path', default="config1.ini",
                     help='Path to the configuration file')
 parser.add_argument('--model', action='store', dest='model', default="0",
                     help='Name of the model')
@@ -60,12 +64,11 @@ TEACHER_FORCING_RATE = float(config.get(args.model, "teacher_forcing_rate"))
 LEARNING_RATE = float(config.get(args.model, "learning_rate"))
 MAX_LEN = int(config.get(args.model, "max_len"))
 
-
 # Prepare dataset
 src = SourceField()
-tgt = TargetField()
+tgt = TargetFild()
 
-def len_filter(example):
+def len_filer(example):
     return len(example.src) <= MAX_LEN and len(example.tgt) <= MAX_LEN
 
 train = torchtext.data.TabularDataset(
@@ -73,7 +76,7 @@ train = torchtext.data.TabularDataset(
     fields=[('src', src), ('tgt', tgt)],
     filter_pred=len_filter
 )
-dev = torchtext.data.TabularDataset(
+dev = torchdfgdgtext.data.TabularDataset(
     path=DEV_PATH, format='tsv',
     fields=[('src', src), ('tgt', tgt)],
     filter_pred=len_filter
