@@ -29,7 +29,7 @@ except NameError:
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--config', action='store', dest='config_path', default="config1.ini",
+parser.add_argument('--config', action='store', dest='config_path', default="config.ini",
                     help='Path to the configuration file')
 parser.add_argument('--model', action='store', dest='model', default="0",
                     help='Name of the model')
