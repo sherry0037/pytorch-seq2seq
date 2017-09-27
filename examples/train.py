@@ -66,9 +66,9 @@ MAX_LEN = int(config.get(args.model, "max_len"))
 
 # Prepare dataset
 src = SourceField()
-tgt = TargetFild()
+tgt = TargetField()
 
-def len_filer(example):
+def len_filter(example):
     return len(example.src) <= MAX_LEN and len(example.tgt) <= MAX_LEN
 
 train = torchtext.data.TabularDataset(
@@ -76,7 +76,7 @@ train = torchtext.data.TabularDataset(
     fields=[('src', src), ('tgt', tgt)],
     filter_pred=len_filter
 )
-dev = torchdfgdgtext.data.TabularDataset(
+dev = torchtext.data.TabularDataset(
     path=DEV_PATH, format='tsv',
     fields=[('src', src), ('tgt', tgt)],
     filter_pred=len_filter
