@@ -14,7 +14,7 @@ from torch.optim.lr_scheduler import StepLR
 import seq2seq
 from seq2seq.trainer import SupervisedTrainer
 from seq2seq.models import EncoderRNN, DecoderRNN, Seq2seq
-from seq2seq.models.ErrorDecoderRNN import ErrorDecoderRNN
+from seq2seq.models.AttendedDecoderRNN import AttendedDecoderRNN
 from seq2seq.loss import Perplexity
 from seq2seq.optim import Optimizer
 from seq2seq.dataset import SourceField, TargetField
@@ -104,7 +104,12 @@ if not args.resume:
     hidden_size=HIDDEN_SIZE
     encoder = EncoderRNN(len(src.vocab), MAX_LEN, hidden_size,
                          variable_lengths=True)
-    decoder = DecoderRNN(len(tgt.vocab), MAX_LEN, hidden_size,
+    if ATTENTION == "local":
+        decoder = AttendedDecoderRNN(len(tgt.vocab), MAX_LEN, hidden_size,
+                         dropout_p=0.2, attention_method=ATTENTION,
+                         eos_id=tgt.eos_id, sos_id=tgt.sos_id)
+    else:
+        decoder = DecoderRNN(len(tgt.vocab), MAX_LEN, hidden_size,
                          dropout_p=0.2, use_attention=True,
                          eos_id=tgt.eos_id, sos_id=tgt.sos_id)
     seq2seq = Seq2seq(encoder, decoder)

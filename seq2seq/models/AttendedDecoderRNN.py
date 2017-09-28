@@ -161,7 +161,7 @@ class AttendedDecoderRNN(BaseRNN):
 
         fill_contexts = Variable(torch.zeros(encoder_outputs.size()))
         if torch.cuda.is_available():
-	    fill_contexts.cuda()
+            fill_contexts = fill_contexts.cuda()
  
         for di in range(self.max_length):
             local_contexts = get_local_contexts(di, encoder_outputs) if di <= encoder_outputs.size(1) else fill_contexts

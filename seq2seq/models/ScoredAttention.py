@@ -36,7 +36,7 @@ class ScoredAttention(Attention):
          >>> context = Variable(torch.randn(5, 3, 256))
          >>> output = Variable(torch.randn(5, 5, 256))
          >>> output, attn = attention(output, context)
-
+scor
     """
     def __init__(self, dim, method):
         super(ScoredAttention, self).__init__(dim)
@@ -64,9 +64,7 @@ class ScoredAttention(Attention):
         return output, attn
 
     def score(self, output, context):
-        if self.method == 'general': 
-	    print output
-	    print context
+        if self.method == 'general' or self.method == 'local': 
             energy = torch.bmm(output, context.transpose(1, 2))
             return energy
         else:
