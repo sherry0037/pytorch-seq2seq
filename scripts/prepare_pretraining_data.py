@@ -1,6 +1,7 @@
+# Prepare pretraining data by duplicate sentences.
+#
 # Usage:
-#
-#
+# python prepare_training_data.py --input $INPUT_PATH --output $OUTPUT_PATH
 #
 
 
@@ -20,8 +21,8 @@ def main(argv):
 	make_pre(argv.input, argv.output)
 
 if __name__ == '__main__':
-	parser = argparse.ArgumentParser(description="convert .sgml file into .json file")
-	parser.add_argument("--input", dest="input", default="../data/billion/news.2011.en.shuffled")
-	parser.add_argument("--output", dest="output", default="../data/billion/billion2011.txt")
+	parser = argparse.ArgumentParser(description="Prepare pretraining data")
+	parser.add_argument("input", default="../data/billion/news.2011.en.shuffled")
+	parser.add_argument("output", default="../data/billion/billion2011.txt")
 	args = parser.parse_args()
 	main(args)
