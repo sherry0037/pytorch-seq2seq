@@ -114,10 +114,11 @@ else:
     if not opt.resume:
         # Initialize model
         hidden_size=128
+        bidirectional = True
         encoder = EncoderRNN(len(src.vocab), max_len, hidden_size,
-                             variable_lengths=True)
-        decoder = DecoderRNN(len(tgt.vocab), max_len, hidden_size,
-                             dropout_p=0.2, use_attention=True,
+                             bidirectional=bidirectional, variable_lengths=True)
+        decoder = DecoderRNN(len(tgt.vocab), max_len, hidden_size * 2 if bidirectional else 1,
+                             dropout_p=0.2, use_attention=True, bidirectional=bidirectional,
                              eos_id=tgt.eos_id, sos_id=tgt.sos_id)
         seq2seq = Seq2seq(encoder, decoder)
         if torch.cuda.is_available():
@@ -139,9 +140,16 @@ else:
                           print_every=10, expt_dir=opt.expt_dir)
 
     seq2seq = t.train(seq2seq, train,
+<<<<<<< HEAD
             num_epochs=5, dev_data=dev,
             optimizer=optimizer,
             resume=opt.resume)
+=======
+                      num_epochs=6, dev_data=dev,
+                      optimizer=optimizer,
+                      teacher_forcing_ratio=0.5,
+                      resume=opt.resume)
+>>>>>>> master
 
 predictor = Predictor(seq2seq, input_vocab, output_vocab)
 
