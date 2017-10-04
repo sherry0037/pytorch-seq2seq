@@ -66,9 +66,7 @@ OUT_PATH=EXPT_PATH + "/outputs"
 MAX_LEN = int(config.get(args.model, "max_len"))
    
 if not args.load_checkpoint:
-    args.load_checkpoint = EXPT_PATH:
-
-
+    args.load_checkpoint = EXPT_PATH
 
 checkpoints = [args.load_checkpoint]
 if not args.load_checkpoint[:4]=="2017":

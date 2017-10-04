@@ -82,9 +82,10 @@ dev = torchtext.data.TabularDataset(
     filter_pred=len_filter
 )
 src.build_vocab(train, wv_type='glove.6B', fill_from_vectors=True, max_size=VOCAB_SIZE)
-tgt.build_vocab(train, wv_type='glove.6B', fill_from_vectors=True, max_size=VOCAB_SIZE)
+#tgt.build_vocab(train, wv_type='glove.6B', fill_from_vectors=True, max_size=VOCAB_SIZE)
 #src.build_vocab(train, max_size=VOCAB_SIZE)
-#tgt.build_vocab(train, max_size=VOCAB_SIZE)
+tgt.build_vocab(train, max_size=VOCAB_SIZE)
+tgt.vocab = src.vocab
 input_vocab = src.vocab
 output_vocab = tgt.vocab
 
@@ -122,8 +123,8 @@ if not args.resume:
 	optimizer = Optimizer(torch.optim.Adam(seq2seq.parameters(), lr = LEARNING_RATE), max_grad_norm=5)
 # train
 t = SupervisedTrainer(loss=loss, batch_size=BATCH_SIZE,
-                      checkpoint_every=3000,
-                      print_every=50, expt_dir=EXPT_PATH)
+                      checkpoint_every='epoch',
+                      print_every=500, expt_dir=EXPT_PATH)
 
 seq2seq = t.train(seq2seq, train,
         num_epochs=args.n_epoch, dev_data=dev,

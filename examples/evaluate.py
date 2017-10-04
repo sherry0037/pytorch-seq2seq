@@ -1,4 +1,7 @@
 import os
+import sys
+sys.path.append('../')
+sys.path.append('../seq2seq/')
 import argparse
 import ConfigParser
 import codecs
