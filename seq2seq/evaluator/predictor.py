@@ -33,10 +33,10 @@ class Predictor(object):
         """
         src_id_seq = Variable(torch.LongTensor([self.src_vocab.stoi[tok] for tok in src_seq]),
                               volatile=True).view(1, -1) 
-        decoder_kick = Variable(torch.LongTensor([self.tgt_vocab.stoi['<sos>']]))
+        #decoder_kick = Variable(torch.LongTensor([self.tgt_vocab.stoi['<sos>']]))
         if torch.cuda.is_available():
             src_id_seq = src_id_seq.cuda()
-            decoder_kick = decoder_kick.cuda()
+           #decoder_kick = decoder_kick.cuda()
 
         if error_index:
             input_variable = src_id_seq
@@ -50,7 +50,7 @@ class Predictor(object):
                               error_index=error_index,
                               src_id_seq=src_id_seq)
         else:
-            softmax_list,_,other = self.model(src_id_seq, [len(src_seq)], decoder_kick)
+            softmax_list,_,other = self.model(src_id_seq, [len(src_seq)])
         length = other['length'][0]
         tgt_id_seq = []
         for di in range(len(src_seq)):
