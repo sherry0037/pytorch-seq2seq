@@ -56,13 +56,19 @@ print config.items(args.model)
 TRAIN_PATH = config.get(args.model, "train")
 DEV_PATH = config.get(args.model, "dev")
 EXPT_PATH = config.get(args.model, "expt")
-VOCAB_SIZE = int(config.get(args.model, "vocab_size"))
 HIDDEN_SIZE = int(config.get(args.model, "hidden_size"))
-ATTENTION = config.get(args.model, "attention")
 BATCH_SIZE = int(config.get(args.model, "batch_size"))
 TEACHER_FORCING_RATE = float(config.get(args.model, "teacher_forcing_rate"))
 LEARNING_RATE = float(config.get(args.model, "learning_rate"))
-MAX_LEN = int(config.get(args.model, "max_len"))
+DROPOUT = float(config.get(args.model, "drop_out"))
+WEIGHT_DECAY = float(config.get(args.model, "weight_decay"))
+WV_DIM=int(config.get(args.model, "embedding_size"))
+
+ATTENTION = "global"
+VOCAB_SIZE = 50000
+MAX_LEN = 50
+WV_TYPE='word2vec', 
+
 
 # Prepare dataset
 src = SourceField()
@@ -81,7 +87,7 @@ dev = torchtext.data.TabularDataset(
     fields=[('src', src), ('tgt', tgt)],
     filter_pred=len_filter
 )
-src.build_vocab(train, wv_type='glove.6B', fill_from_vectors=True, max_size=VOCAB_SIZE)
+src.build_vocab(train, wv_type='word2vec', wv_dim=200, fill_from_vectors=True, max_size=VOCAB_SIZE)
 #tgt.build_vocab(train, wv_type='glove.6B', fill_from_vectors=True, max_size=VOCAB_SIZE)
 #src.build_vocab(train, max_size=VOCAB_SIZE)
 tgt.build_vocab(train, max_size=VOCAB_SIZE)
@@ -107,11 +113,11 @@ if not args.resume:
                          variable_lengths=True)
     if ATTENTION == "local":
         decoder = AttendedDecoderRNN(len(tgt.vocab), MAX_LEN, hidden_size,
-                         dropout_p=0.2, attention_method=ATTENTION,
+                         dropout_p=DROPOUT, attention_method=ATTENTION,
                          eos_id=tgt.eos_id, sos_id=tgt.sos_id)
     else:
         decoder = DecoderRNN(len(tgt.vocab), MAX_LEN, hidden_size,
-                         dropout_p=0.2, use_attention=True,
+                         dropout_p=DROPOUT, use_attention=True,
                          eos_id=tgt.eos_id, sos_id=tgt.sos_id)
     seq2seq = Seq2seq(encoder, decoder)
     if torch.cuda.is_available():
@@ -120,10 +126,10 @@ if not args.resume:
     for param in seq2seq.parameters():
         param.data.uniform_(-0.08, 0.08)
 
-	optimizer = Optimizer(torch.optim.Adam(seq2seq.parameters(), lr = LEARNING_RATE), max_grad_norm=5)
+	optimizer = Optimizer(torch.optim.Adam(seq2seq.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY), max_grad_norm=5)
 # train
 t = SupervisedTrainer(loss=loss, batch_size=BATCH_SIZE,
-                      checkpoint_every='epoch',
+                      checkpoint_every='better',
                       print_every=500, expt_dir=EXPT_PATH)
 
 seq2seq = t.train(seq2seq, train,

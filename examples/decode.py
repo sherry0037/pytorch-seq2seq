@@ -46,6 +46,9 @@ parser.add_argument('--errors_given', '-e', action='store_true', dest='errors_gi
 parser.add_argument('--log-level', dest='log_level',
                     default='info',
                     help='Logging level.')
+parser.add_argument('--preprocess', '-p', dest='preprocess',
+                    default=False, action='store_true', 
+                    help='Set true if data is preprocessed.')
 
 
 args = parser.parse_args()
@@ -60,10 +63,12 @@ config = ConfigParser.ConfigParser()
 config.read("examples/%s"%args.config_path)
 print config.items(args.model)
 TRAIN_PATH = config.get(args.model, "train")
-DEV_PATH = config.get(args.model, "dev")[:-3]+"json"
+#DEV_PATH = config.get(args.model, "dev")[:-3]+"json"
+DEV_PATH = "data/nucle/dev/data_p.txt"
 EXPT_PATH = config.get(args.model, "expt")
 OUT_PATH=EXPT_PATH + "/outputs"
-MAX_LEN = int(config.get(args.model, "max_len"))
+
+MAX_LEN = 50
    
 if not args.load_checkpoint:
     args.load_checkpoint = EXPT_PATH
@@ -99,8 +104,12 @@ def decode(checkpoint_name, out_path=OUT_PATH, expt_path=EXPT_PATH):
         for s in sentences:       
             if not len_filter(s["input_sentence"], s["corrected_sentence"]):
                 continue
-            source_sentences.append(" ".join(s["input_sentence"]))
-            target_sentences.append(" ".join(s["corrected_sentence"]))
+            if args.preprocess:
+                source_sentences.append(preprocess(s["input_sentence"], reverse=True))
+                target_sentences.append(preprocess(s["input_sentence"]))
+            else:
+                source_sentences.append(" ".join(s["input_sentence"]))
+                target_sentences.append(" ".join(s["corrected_sentence"]))
             if args.errors_given:
                 err = []
                 for m in s["mistakes"]:
@@ -122,6 +131,20 @@ def decode(checkpoint_name, out_path=OUT_PATH, expt_path=EXPT_PATH):
             f.write("output = " + output_sentences[i] + "\n\n")
     print ("Finish decoding. Results saved at %s"%(out_path+"/"+checkpoint_name+".txt"))
 
+def preprocess(sentence, reverse=False):
+    """ Preprocess a sentence.
+
+        Args:
+        sentence(list): list of tokens
+        reverse(boolean): wether to reverse the sentence
+    """
+    if reverse:
+        sentence = sentence[::-1]
+    sentence = " ".join(sentence)
+    sentence = filter_digits(sentence)
+    sentence = sentence.lower()
+    return sentence
+
 for checkpoint_path in checkpoints:
     decode(checkpoint_path)
-print ("All finished.")
+print ("Finish decoding all files.")
