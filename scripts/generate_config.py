@@ -58,7 +58,7 @@ def write_bash(k=50, time="0-6", mem="30", config="config.ini", preprocess=False
             f.write("python examples/train.py --model $MODEL --config $CONFIG\n")
             p = "-p" if preprocess else " "
             f.write("python examples/decode.py %s --model $MODEL --config $CONFIG\n"%p)
-            f.write("python examples/evaluate.py --model $MODEL --config $CONFIG\n\n")
+            #f.write("python examples/evaluate.py --model $MODEL --config $CONFIG\n\n")
             f.write("diff=$SECONDS\n")
             f.write("echo \"$(($diff / 3600))h $((($diff / 60) % 60))m $(($diff % 60))s elapsed.\"")
     print ("Finish writing %d files at %s."%(k, output_dir))

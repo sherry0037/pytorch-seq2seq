@@ -9,7 +9,7 @@ import logging
 import torch
 import torchtext
 import ConfigParser
-from torch.optim.lr_scheduler import StepLR
+#from torch.optim.lr_scheduler import StepLR
 
 import seq2seq
 from seq2seq.trainer import SupervisedTrainer

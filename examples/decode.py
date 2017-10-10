@@ -6,7 +6,7 @@ import argparse
 import logging
 
 import torch
-from torch.optim.lr_scheduler import StepLR
+#from torch.optim.lr_scheduler import StepLR
 import torchtext
 import json
 import codecs
@@ -26,12 +26,6 @@ try:
     raw_input          # Python 2
 except NameError:
     raw_input = input  # Python 3
-
-# Sample usage:
-#      # resuming from a specific checkpoint
-#      CHECKPOINT_DIR=2017_09_07_14_45_10 
-#      python examples/decode.py --load_checkpoint $CHECKPOINT_DIR
-CHECKPOINT_DIR="2017_09_19_15_46_02" 
 
 
 parser = argparse.ArgumentParser()
@@ -60,6 +54,7 @@ logging.info(args)
 
 
 config = ConfigParser.ConfigParser()
+print "examples/"+args.config_path
 config.read("examples/%s"%args.config_path)
 print config.items(args.model)
 TRAIN_PATH = config.get(args.model, "train")
