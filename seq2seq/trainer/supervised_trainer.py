@@ -83,6 +83,8 @@ class SupervisedTrainer(object):
 
         step = start_step
         step_elapsed = 0
+        min_loss = 9223372036854775807
+        max_accuracy = -1
         for epoch in range(start_epoch, n_epochs + 1):
             log.debug("Epoch: %d, Step: %d" % (epoch, step))
 
@@ -115,7 +117,7 @@ class SupervisedTrainer(object):
                     log.info(log_msg)
 
                 # Checkpoint
-                if not self.checkpoint_every == 'epoch':
+                if not (self.checkpoint_every == 'epoch' or self.checkpoint_every == 'better'):
                     if step % self.checkpoint_every == 0 or step == total_steps:
                         Checkpoint(model=model,
                                    optimizer=self.optimizer,
@@ -135,6 +137,15 @@ class SupervisedTrainer(object):
                 self.optimizer.update(dev_loss, epoch)
                 log_msg += ", Dev %s: %.4f, Accuracy: %.4f" % (self.loss.name, dev_loss, accuracy)
                 model.train(mode=True)
+                if self.checkpoint_every == 'better':
+                    if dev_loss < min_loss and accuracy > max_accuracy:
+                        min_loss = dev_loss
+                        max_accuracy = accuracy
+                        Checkpoint(model=model,
+                           optimizer=self.optimizer,
+                           epoch=epoch, step=step,
+                           input_vocab=data.fields[seq2seq.src_field_name].vocab,
+                           output_vocab=data.fields[seq2seq.tgt_field_name].vocab).save(self.expt_dir)
             else:
                 self.optimizer.update(epoch_loss_avg, epoch)
 
