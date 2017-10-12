@@ -71,6 +71,9 @@ class AttendedDecoderRNN(BaseRNN):
         super(AttendedDecoderRNN, self).__init__(vocab_size, max_len, hidden_size,
                 input_dropout_p, dropout_p,
                 n_layers, rnn_cell)
+        
+        self.bidirectional_encoder = bidirectional
+        self.rnn = self.rnn_cell(hidden_size, hidden_size, n_layers, batch_first=True, dropout=dropout_p)
 
         self.output_size = vocab_size
         self.max_length = max_len
