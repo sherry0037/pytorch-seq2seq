@@ -65,8 +65,8 @@ class AttendedDecoderRNN(BaseRNN):
     KEY_SEQUENCE = 'sequence'
 
     def __init__(self, vocab_size, max_len, hidden_size,
-            sos_id, eos_id,
-            n_layers=1, rnn_cell='gru',
+            sos_id, eos_id, window_size=2,
+            n_layers=1, rnn_cell='gru', bidirectional=False,
             input_dropout_p=0, dropout_p=0, attention_method="general"):
         super(AttendedDecoderRNN, self).__init__(vocab_size, max_len, hidden_size,
                 input_dropout_p, dropout_p,
@@ -77,6 +77,7 @@ class AttendedDecoderRNN(BaseRNN):
         self.attention_method= attention_method
         self.eos_id = eos_id
         self.sos_id = sos_id
+        self.window_size = window_size
 
         self.init_input = None
 
@@ -150,7 +151,7 @@ class AttendedDecoderRNN(BaseRNN):
                 lengths[update_idx] = len(sequence_symbols)
             return symbols
 
-        def get_local_contexts(position, encoder_outputs, window=2): 
+        def get_local_contexts(position, encoder_outputs, window=self.window_size): 
             indices = np.arange(position-window, position+window+1)
             indices = indices[(indices >= 0) & (indices < encoder_outputs.size(1))]
             indices = torch.from_numpy(indices)
