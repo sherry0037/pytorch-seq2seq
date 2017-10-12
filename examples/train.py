@@ -34,7 +34,9 @@ parser.add_argument('--config', action='store', dest='config_path', default="con
 parser.add_argument('--model', action='store', dest='model', default="0",
                     help='Name of the model')
 parser.add_argument('--decoder', action='store', dest='decoder_type', default="simple",
-                    help='Choose decoder type from: simple, error, attended')
+                    help='Choose decoder type from: simple, error. Default: simple')
+parser.add_argument('--attention', action='store', dest='attention_type', default="global",
+                    help='Choose attention type from: global, local. Default: global')
 parser.add_argument('--n_epoch', action='store', type=int, dest='n_epoch', default=30,
                     help='Number of epoch to train. Default: 30')
 parser.add_argument('--save', action='store', dest='checkpoint_every', default="better",
@@ -72,10 +74,11 @@ DROPOUT = float(config.get(args.model, "drop_out"))
 WEIGHT_DECAY = float(config.get(args.model, "weight_decay"))
 WV_DIM=int(config.get(args.model, "embedding_size"))
 
-ATTENTION = "global"
+ATTENTION = args.attention_type
 VOCAB_SIZE = 50000
 MAX_LEN = 50
-WV_TYPE='word2vec', 
+WV_TYPE ='word2vec',
+LOCAL_WINDOW_SIZE = 2 
 
 
 # Prepare dataset
@@ -122,6 +125,7 @@ if not args.resume:
                          variable_lengths=True)
     if ATTENTION == "local":
         decoder = AttendedDecoderRNN(len(tgt.vocab), MAX_LEN, hidden_size,
+                         n_layers=N_LAYERS,rnn_cell="LSTM", window_size=LOCAL_WINDOW_SIZE,
                          dropout_p=DROPOUT, attention_method=ATTENTION,
                          eos_id=tgt.eos_id, sos_id=tgt.sos_id)
     else:
