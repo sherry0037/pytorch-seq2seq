@@ -59,7 +59,7 @@ config.read("examples/%s"%args.config_path)
 print config.items(args.model)
 TRAIN_PATH = config.get(args.model, "train")
 #DEV_PATH = config.get(args.model, "dev")[:-3]+"json"
-DEV_PATH = "data/nucle/dev/data_p.txt"
+DEV_PATH = "data/nucle/dev/validation.json"
 EXPT_PATH = config.get(args.model, "expt")
 OUT_PATH=EXPT_PATH + "/outputs"
 
@@ -139,6 +139,13 @@ def preprocess(sentence, reverse=False):
     sentence = filter_digits(sentence)
     sentence = sentence.lower()
     return sentence
+
+def filter_digits(sentence):
+    """
+        Replace all the digits in a string to "d"
+    """
+    import re
+    return re.sub("\d", "d", sentence)
 
 for checkpoint_path in checkpoints:
     decode(checkpoint_path)

@@ -32,7 +32,7 @@ EXPT_PATH = config.get(args.model, "expt") + "/outputs"
 if args.errors_given:
     EXPT_PATH += "/errors"
 OUT_PATH=EXPT_PATH + "/scores/"
-MAX_LEN = int(config.get(args.model, "max_len"))
+MAX_LEN = 50
 
 if not os.path.exists(OUT_PATH):
     os.makedirs(OUT_PATH)

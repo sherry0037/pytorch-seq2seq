@@ -9,7 +9,7 @@ import logging
 import torch
 import torchtext
 import ConfigParser
-from torch.optim.lr_scheduler import StepLR
+#from torch.optim.lr_scheduler import StepLR
 
 import seq2seq
 from seq2seq.trainer import SupervisedTrainer
@@ -30,7 +30,7 @@ except NameError:
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', action='store', dest='config_path', default="config.ini",
-                    help='Path to the configuration file')
+                    help='Name of the configuration file. Default: config.ini')
 parser.add_argument('--load_model', action='store', dest='load_model', default="0",
                     help='Name of the model to load')
 parser.add_argument('--new_model', action='store', dest='new_model', default="1",
@@ -62,7 +62,7 @@ DEV_PATH_1 = config.get(args.new_model, "dev")
 EXPT_PATH_1 = config.get(args.new_model, "expt")
 LEARNING_RATE_1 = float(config.get(args.new_model, "learning_rate"))
 BATCH_SIZE_1 = int(config.get(args.new_model, "batch_size"))
-MAX_LEN_1 = int(config.get(args.new_model, "max_len"))
+MAX_LEN = 50
 
 
 # Prepare dataset
@@ -70,7 +70,7 @@ src = SourceField()
 tgt = TargetField()
 
 def len_filter(example):
-    return len(example.src) <= MAX_LEN_1 and len(example.tgt) <= MAX_LEN_1
+    return len(example.src) <= MAX_LEN and len(example.tgt) <= MAX_LEN
 
 # Get the latest checkpoint
 latest_checkpoint_path = Checkpoint.get_latest_checkpoint(EXPT_PATH_0)
@@ -104,8 +104,8 @@ if torch.cuda.is_available():
 optimizer = Optimizer(torch.optim.Adam(seq2seq.parameters(), lr = LEARNING_RATE_1), max_grad_norm=5)
 
 t = SupervisedTrainer(loss=loss, batch_size=BATCH_SIZE_1,
-                      checkpoint_every=3000,
-                      print_every=50, expt_dir=EXPT_PATH_1)
+                      checkpoint_every="better",
+                      print_every=2000, expt_dir=EXPT_PATH_1)
 
 seq2seq = t.train(seq2seq, train,
         num_epochs=args.n_epoch, dev_data=dev,

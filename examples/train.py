@@ -37,6 +37,8 @@ parser.add_argument('--decoder', action='store', dest='decoder_type', default="s
                     help='Choose decoder type from: simple, error, attended')
 parser.add_argument('--n_epoch', action='store', type=int, dest='n_epoch', default=30,
                     help='Number of epoch to train. Default: 30')
+parser.add_argument('--save', action='store', dest='checkpoint_every', default="better",
+                    help='Save after certain number of training data (int), or after each epoch ("epoch"), or if performance is better ("better"). Default: better')
 parser.add_argument('--resume', action='store_true', dest='resume',
                     default=False,
                     help='Indicates if training has to be resumed from the latest checkpoint')
@@ -50,12 +52,18 @@ LOG_FORMAT = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
 logging.basicConfig(format=LOG_FORMAT, level=getattr(logging, args.log_level.upper()))
 logging.info(args)
 
+try:
+    CHECKPOINT_EVERY = int(args.checkpoint_every)
+except ValueError:
+    CHECKPOINT_EVERY = args.checkpoint_every
+
 config = ConfigParser.ConfigParser()
 config.read("examples/%s"%args.config_path)
 print config.items(args.model)
 TRAIN_PATH = config.get(args.model, "train")
 DEV_PATH = config.get(args.model, "dev")
 EXPT_PATH = config.get(args.model, "expt")
+N_LAYERS = int(config.get(args.model, "n_layers"))
 HIDDEN_SIZE = int(config.get(args.model, "hidden_size"))
 BATCH_SIZE = int(config.get(args.model, "batch_size"))
 TEACHER_FORCING_RATE = float(config.get(args.model, "teacher_forcing_rate"))
@@ -110,6 +118,7 @@ if not args.resume:
     # Initialize model
     hidden_size=HIDDEN_SIZE
     encoder = EncoderRNN(len(src.vocab), MAX_LEN, hidden_size,
+                         n_layers=N_LAYERS,rnn_cell="LSTM",
                          variable_lengths=True)
     if ATTENTION == "local":
         decoder = AttendedDecoderRNN(len(tgt.vocab), MAX_LEN, hidden_size,
@@ -117,6 +126,7 @@ if not args.resume:
                          eos_id=tgt.eos_id, sos_id=tgt.sos_id)
     else:
         decoder = DecoderRNN(len(tgt.vocab), MAX_LEN, hidden_size,
+                         n_layers=N_LAYERS,rnn_cell="LSTM",
                          dropout_p=DROPOUT, use_attention=True,
                          eos_id=tgt.eos_id, sos_id=tgt.sos_id)
     seq2seq = Seq2seq(encoder, decoder)
@@ -129,7 +139,7 @@ if not args.resume:
 	optimizer = Optimizer(torch.optim.Adam(seq2seq.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY), max_grad_norm=5)
 # train
 t = SupervisedTrainer(loss=loss, batch_size=BATCH_SIZE,
-                      checkpoint_every='better',
+                      checkpoint_every=CHECKPOINT_EVERY,
                       print_every=500, expt_dir=EXPT_PATH)
 
 seq2seq = t.train(seq2seq, train,
