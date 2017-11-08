@@ -26,6 +26,7 @@ def filter_digits(sentence):
     """
         Replace all the digits in a string to "d". 
     """
+    sentence = sentence.lower()
     import re
     return re.sub("\d", "d", sentence)
 

@@ -65,22 +65,18 @@ class AttendedDecoderRNN(BaseRNN):
     KEY_SEQUENCE = 'sequence'
 
     def __init__(self, vocab_size, max_len, hidden_size,
-            sos_id, eos_id, window_size=2,
-            n_layers=1, rnn_cell='gru', bidirectional=False,
+            sos_id, eos_id,
+            n_layers=1, rnn_cell='gru', window_size=2,
             input_dropout_p=0, dropout_p=0, attention_method="general"):
         super(AttendedDecoderRNN, self).__init__(vocab_size, max_len, hidden_size,
                 input_dropout_p, dropout_p,
                 n_layers, rnn_cell)
-        
-        self.bidirectional_encoder = bidirectional
-        self.rnn = self.rnn_cell(hidden_size, hidden_size, n_layers, batch_first=True, dropout=dropout_p)
 
         self.output_size = vocab_size
         self.max_length = max_len
         self.attention_method= attention_method
         self.eos_id = eos_id
         self.sos_id = sos_id
-        self.window_size = window_size
 
         self.init_input = None
 
@@ -173,12 +169,8 @@ class AttendedDecoderRNN(BaseRNN):
                                                                      function=function)
             step_output = decoder_output.squeeze(1)
             symbols = decode(di, step_output, step_attn)
-            if use_teacher_forcing:
-                if di>=inputs.size(1):
-                    break
-                else:
-                    symbols = inputs[:, di]
-            decoder_input = symbols
+            if use_teacher_forcing: 
+                decoder_input = symbols
 
         ret_dict[AttendedDecoderRNN.KEY_SEQUENCE] = sequence_symbols
         ret_dict[AttendedDecoderRNN.KEY_LENGTH] = lengths.tolist()
