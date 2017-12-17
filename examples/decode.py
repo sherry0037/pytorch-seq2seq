@@ -37,6 +37,8 @@ parser.add_argument('--load_checkpoint', action='store', dest='load_checkpoint',
                     help='The name of the checkpoint to load, usually an encoded time string. Can also be the directory name.')
 parser.add_argument('--errors_given', '-e', action='store_true', dest='errors_given', default=False,
                     help='Use known indices for errors to make prediction.')
+parser.add_argument('--reverse', '-r', action='store_true', dest='reverse', default=False,
+                    help='Reverse the source sentences.')
 parser.add_argument('--log-level', dest='log_level',
                     default='info',
                     help='Logging level.')
@@ -59,7 +61,8 @@ config.read("examples/%s"%args.config_path)
 print config.items(args.model)
 TRAIN_PATH = config.get(args.model, "train")
 #DEV_PATH = config.get(args.model, "dev")[:-3]+"json"
-DEV_PATH = "data/nucle/dev/validation.json"
+#DEV_PATH = "data/nucle/dev/validation.json"
+DEV_PATH = "data/nucle/test/test.json"
 EXPT_PATH = config.get(args.model, "expt")
 OUT_PATH=EXPT_PATH + "/outputs"
 
@@ -99,12 +102,8 @@ def decode(checkpoint_name, out_path=OUT_PATH, expt_path=EXPT_PATH):
         for s in sentences:       
             if not len_filter(s["input_sentence"], s["corrected_sentence"]):
                 continue
-            if args.preprocess:
-                source_sentences.append(preprocess(s["input_sentence"], reverse=True))
-                target_sentences.append(preprocess(s["input_sentence"]))
-            else:
-                source_sentences.append(" ".join(s["input_sentence"]))
-                target_sentences.append(" ".join(s["corrected_sentence"]))
+            source_sentences.append(" ".join(s["input_sentence"]))
+            target_sentences.append(" ".join(s["corrected_sentence"]))
             if args.errors_given:
                 err = []
                 for m in s["mistakes"]:
@@ -112,7 +111,10 @@ def decode(checkpoint_name, out_path=OUT_PATH, expt_path=EXPT_PATH):
                 output_sentences.append(" ".join(predictor.predict(s["input_sentence"], err)))
                 
             else:
-                output_sentences.append(" ".join(predictor.predict(s["input_sentence"])))
+                if args.preprocess:
+                    output_sentences.append(" ".join(predictor.predict(preprocess(s["input_sentence"], reverse=args.reverse))))
+                else:
+                    output_sentences.append(" ".join(predictor.predict(s["input_sentence"])))
 
     assert len(source_sentences) == len(target_sentences) == len(output_sentences)
     if args.errors_given:
@@ -135,9 +137,7 @@ def preprocess(sentence, reverse=False):
     """
     if reverse:
         sentence = sentence[::-1]
-    sentence = " ".join(sentence)
-    sentence = filter_digits(sentence)
-    sentence = sentence.lower()
+    sentence = [filter_digits(s).lower() for s in sentence]
     return sentence
 
 def filter_digits(sentence):

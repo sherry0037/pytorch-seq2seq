@@ -18,8 +18,8 @@ parser.add_argument('--input_dir', action='store', dest='input_dir', default="./
                     help='Path to the result files. Default: "./experiment/nucle"')
 parser.add_argument('--out_file_name', action='store', dest='out_file', default="scores.txt",
                     help='Name of the output file. Default: "scores.txt"')
-parser.add_argument('--gold_file', action='store', dest='gold_file', default="./data/nucle/dev/validation.json",
-                    help='Path to gold standard. (must be in json format). Default: "./data/nucle/dev/valiation.json"')
+parser.add_argument('--gold_file', action='store', dest='gold_file', default="./data/nucle/test/test.json",
+                    help='Path to gold standard. (must be in json format). Default: "./data/nucle/test/test.json"')
 args = parser.parse_args()
 
 
